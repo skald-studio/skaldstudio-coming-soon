@@ -7,9 +7,9 @@
 
   <title>SKALD STUDIO | Independent Design Practice</title>
 
-  <meta name="description" content="SKALD STUDIO is an independent design practice specializing in brand identity, product design and development. Our new website is currently under development.">
+  <meta name="description" content="SKALD STUDIO is an independent design practice specializing in brand identity, apparel and product design, development and production. A new site is taking shape.">
 
-  <meta name="theme-color" content="#e8e8e8">
+  <meta name="theme-color" content="#88797a">
 
   <style>
     * {
@@ -19,33 +19,49 @@
     html, body {
       margin: 0;
       padding: 0;
-      background: #e8e8e8;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #88797a;
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+      height: 100vh;
+      height: 100dvh;
     }
 
     .page {
       position: relative;
-      width: 100%;
-      margin: 0 auto;
+      width: min(100vw, 180dvh);
+      aspect-ratio: 9 / 5;
+      overflow: hidden;
     }
 
     picture, picture img {
       display: block;
       width: 100%;
-      height: auto;
+      height: 100%;
+    }
+
+    picture img {
+      object-fit: contain;
     }
 
     .contact {
       position: absolute;
-      left: 4.2%;
-      bottom: 1.5%;
-      width: 25%;
-      height: 5%;
+      left: 73%;
+      top: 64%;
+      width: 23%;
+      height: 7%;
+      z-index: 2;
       cursor: pointer;
     }
 
     .contact:focus-visible {
-      outline: 2px solid #222;
-      outline-offset: 4px;
+      outline: 2px solid white;
+      outline-offset: 2px;
     }
 
     .sr-only {
@@ -55,17 +71,31 @@
       padding: 0;
       margin: -1px;
       overflow: hidden;
-      clip: rect(0, 0, 0, 0);
+      clip-path: inset(50%);
       white-space: nowrap;
       border: 0;
     }
 
-    @media (max-width: 700px) {
+    /* MOBILE PORTRAIT */
+
+    @media (max-width: 700px) and (orientation: portrait) {
+      .page {
+        width: min(100vw, 52.7027dvh);
+        aspect-ratio: 39 / 74;
+      }
+
       .contact {
         left: 4%;
-        bottom: 4.5%;
-        width: 50%;
-        height: 4.5%;
+        top: 81%;
+        width: 48%;
+        height: 8%;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
       }
     }
   </style>
@@ -73,22 +103,26 @@
 
 <body>
   <main class="page">
+
     <h1 class="sr-only">SKALD STUDIO</h1>
+
     <p class="sr-only">
       Independent design practice.
-      Brand identity, product design and development.
+      Brand identity.
+      Apparel and product design.
+      Development and production.
       A new site is taking shape.
-      Our website is currently under development.
     </p>
 
     <picture>
       <source
-        media="(max-width: 700px)"
-        srcset="skaldstudio-mobile.webp"
+        media="(max-width: 700px) and (orientation: portrait)"
+        srcset="skaldstudio-mobile-normal.webp"
         type="image/webp"
       >
+
       <img
-        src="skaldstudio-desktop.webp"
+        src="skaldstudio-desktop-normal.webp"
         alt=""
         fetchpriority="high"
       >
@@ -99,7 +133,7 @@
       href="mailto:contact@skaldstudio.com"
       aria-label="Contact SKALD STUDIO by email"
     ></a>
+
   </main>
 </body>
 </html>
-
