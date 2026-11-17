@@ -14,6 +14,10 @@
   <meta name="theme-color" content="#88797a">
 
   <style>
+    :root {
+      --site-bg: #88797a;
+    }
+
     * {
       box-sizing: border-box;
     }
@@ -23,7 +27,8 @@
       padding: 0;
       width: 100%;
       overflow-x: hidden;
-      background: #88797a;
+      background-color: var(--site-bg);
+      transition: background-color 650ms ease-in-out;
     }
 
     body {
@@ -34,7 +39,8 @@
       width: 100%;
       overflow-x: hidden;
       overflow-y: auto;
-      background: #88797a;
+      background-color: var(--site-bg);
+      transition: background-color 650ms ease-in-out;
     }
 
     .page {
@@ -55,7 +61,7 @@
       height: auto;
     }
 
-    /* ANIMATION LAYERS */
+    /* DUAL ANIMATION LAYERS */
 
     .glitch-frame {
       display: none;
@@ -69,7 +75,7 @@
       z-index: 1;
     }
 
-    /* CONTACT DESKTOP */
+    /* DESKTOP CONTACT */
 
     .contact {
       position: absolute;
@@ -82,7 +88,7 @@
     }
 
     .contact:focus-visible {
-      outline: 2px solid #ffffff;
+      outline: 2px solid white;
       outline-offset: 2px;
     }
 
@@ -113,18 +119,22 @@
       }
     }
 
-    /* ACCESSIBILITY */
+    /* REDUCED MOTION */
 
     @media (prefers-reduced-motion: reduce) {
+      html, body {
+        transition: none !important;
+      }
+
       .glitch-frame {
         display: none !important;
+        transition: none !important;
       }
     }
   </style>
 </head>
 
 <body>
-
   <main class="page">
 
     <h1 class="sr-only">SKALD STUDIO</h1>
@@ -137,7 +147,7 @@
       A new site is taking shape.
     </p>
 
-    <!-- RESPONSIVE BASE IMAGE -->
+    <!-- RESPONSIVE BASE -->
 
     <picture>
       <source
@@ -153,7 +163,7 @@
       >
     </picture>
 
-    <!-- DUAL ANIMATION LAYERS -->
+    <!-- ANIMATION LAYERS -->
 
     <img
       id="glitch-a"
@@ -169,7 +179,7 @@
       aria-hidden="true"
     >
 
-    <!-- CONTACT -->
+    <!-- CONTACT LINK -->
 
     <a
       class="contact"
@@ -182,15 +192,21 @@
   <script>
     /*
       SKALD STUDIO
-      MOBILE ANIMATION V4
+      MOBILE ANIMATION V5
 
-      NORMAL  10s
-      TRANSITION NORMAL TO LIGHT  3s
-      LIGHT   10s
-      TRANSITION LIGHT TO NORMAL  3s
+      00–10s  NORMAL
+      10–13s  NORMAL TO LIGHT
 
-      CONTINUOUS 26 SECOND LOOP
+      13–23s  LIGHT
+      23–26s  LIGHT TO DARK
+
+      26–36s  DARK
+      36–39s  DARK TO NORMAL
+
+      REPEAT / ENDLESS LOOP
     */
+
+    /* DISPLAY CONDITIONS */
 
     const portrait = window.matchMedia(
       "(max-width: 700px) and (orientation: portrait)"
@@ -205,42 +221,72 @@
       document.getElementById("glitch-b")
     ];
 
-    /* ANIMATION SETTINGS */
+    const themeColor = document.querySelector(
+      'meta[name="theme-color"]'
+    );
+
+    /* MASTER SETTINGS */
 
     const STATIC_DURATION = 10000;
     const TRANSITION_DURATION = 3000;
     const CROSSFADE_DURATION = 70;
-    const EXPOSURE_DURATION = 100;
+    const BACKGROUND_DURATION = 650;
 
-    /* IMAGE VERSION */
+    const IMAGE_VERSION = "v5";
 
-    const IMAGE_VERSION = "v4";
+    /*
+      THREE STATES
+
+      NORMAL / BRAND IDENTITY
+      LIGHT  / APPAREL & PRODUCT DESIGN
+      DARK   / DEVELOPMENT & PRODUCTION
+    */
 
     const states = {
       normal: {
         master: "skaldstudio-mobile-normal.webp",
-        prefix: "skaldstudio-mobile-character-"
+        prefix: "skaldstudio-mobile-character-",
+        background: "#88797a"
       },
 
       light: {
         master: "skaldstudio-mobile-light.webp",
-        prefix: "skaldstudio-mobile-light-character-"
+        prefix: "skaldstudio-mobile-light-character-",
+        background: "#c7c8c5"
+      },
+
+      dark: {
+        master: "skaldstudio-mobile-dark.webp",
+        prefix: "skaldstudio-mobile-dark-character-",
+        background: "#292b2b"
       }
     };
 
+    const stateOrder = [
+      "normal",
+      "light",
+      "dark"
+    ];
+
+    /* FILE PATHS */
+
     function framePath(state, number) {
-      const file = String(number).padStart(2, "0");
+      const index = String(number).padStart(2, "0");
 
       return (
         states[state].prefix +
-        file +
+        index +
         ".webp?" +
         IMAGE_VERSION
       );
     }
 
     function masterPath(state) {
-      return states[state].master + "?" + IMAGE_VERSION;
+      return (
+        states[state].master +
+        "?" +
+        IMAGE_VERSION
+      );
     }
 
     /*
@@ -259,15 +305,15 @@
       02 NEXT
       01 NEXT
 
-      END:
-      NEXT MASTER STATE
+      FINISH:
+      NEXT MASTER
     */
 
     function buildSequence(from, to) {
-      const steps = [];
+      const sequence = [];
 
       for (let n = 1; n <= 9; n++) {
-        steps.push({
+        sequence.push({
           state: from,
           number: n,
           src: framePath(from, n)
@@ -286,36 +332,60 @@
       ];
 
       for (const [state, number] of returnFrames) {
-        steps.push({
+        sequence.push({
           state,
           number,
           src: framePath(state, number)
         });
       }
 
-      steps.push({
+      sequence.push({
         state: to,
         number: 0,
         src: masterPath(to)
       });
 
-      return steps;
+      return sequence;
     }
 
-    /* PRELOAD BOTH STATES */
+    /* BACKGROUND COLOR CONTROL */
 
+    function setBackground(state, instant = false) {
+      const color = states[state].background;
+
+      const root = document.documentElement;
+
+      if (instant) {
+        root.style.transition = "none";
+        document.body.style.transition = "none";
+      }
+
+      root.style.setProperty("--site-bg", color);
+
+      if (themeColor) {
+        themeColor.setAttribute("content", color);
+      }
+
+      if (instant) {
+        void document.body.offsetWidth;
+        root.style.transition = "";
+        document.body.style.transition = "";
+      }
+    }
+
+    /* PRELOAD ALL THREE STATES */
+
+    const imageCache = new Map();
     let preloadPromise = null;
-    const imageCache = [];
 
     function preloadImages() {
       if (preloadPromise) return preloadPromise;
 
-      const paths = [
-        masterPath("normal"),
-        masterPath("light")
-      ];
+      const paths = [];
 
-      for (const state of ["normal", "light"]) {
+      for (const state of stateOrder) {
+        paths.push(masterPath(state));
+
         for (let n = 1; n <= 9; n++) {
           paths.push(framePath(state, n));
         }
@@ -325,11 +395,12 @@
         paths.map(src => new Promise(resolve => {
           const image = new Image();
 
-          imageCache.push(image);
+          imageCache.set(src, image);
 
           image.onload = () => resolve(true);
+
           image.onerror = () => {
-            console.error("Image failed:", src);
+            console.error("Image loading failed:", src);
             resolve(false);
           };
 
@@ -339,6 +410,8 @@
 
       return preloadPromise;
     }
+
+    /* TIMING HELPERS */
 
     const wait = ms =>
       new Promise(resolve => setTimeout(resolve, ms));
@@ -355,7 +428,7 @@
       );
     }
 
-    /* RESET WITHOUT CHANGING PAGE LAYOUT */
+    /* RESET LAYERS */
 
     function resetLayers() {
       layers.forEach(layer => {
@@ -369,38 +442,72 @@
     }
 
     /*
-      CROSSFADE
+      INDIVIDUAL STATE EFFECTS
 
-      NORMAL FRAMES: 70ms CROSSFADE
+      NORMAL TO LIGHT:
+      EXPOSURE BLEED
 
-      LIGHT ENTRY:
-      SUBTLE EXPOSURE BLEED
+      LIGHT TO DARK:
+      SOFT CONTRAST COLLAPSE
+
+      DARK TO NORMAL:
+      SUBTLE EXPOSURE RECOVERY
 
       MOTION SMEAR:
-      PROVIDED BY THE PHOTOSHOP FRAMES
+      RETAINED FROM PHOTOSHOP FRAMES
     */
 
-    async function fadeTo(step, target, id) {
+    function getEffect(step, from, to) {
+      const enteringNext =
+        step.state === to &&
+        (step.number === 6 || step.number === 4);
+
+      if (!enteringNext) return null;
+
+      if (from === "normal" && to === "light") {
+        return {
+          filter: "brightness(1.08) blur(0.8px)",
+          duration: 160
+        };
+      }
+
+      if (from === "light" && to === "dark") {
+        return {
+          filter: "brightness(0.88) contrast(1.10) blur(0.5px)",
+          duration: 150
+        };
+      }
+
+      if (from === "dark" && to === "normal") {
+        return {
+          filter: "brightness(0.96) blur(0.4px)",
+          duration: 140
+        };
+      }
+
+      return null;
+    }
+
+    /* DUAL LAYER CROSSFADE */
+
+    async function crossfadeTo(step, from, to, id) {
       if (!isActive(id)) return false;
 
       const previous = activeLayer;
 
       const incoming =
-        previous === layers[0] ? layers[1] : layers[0];
+        previous === layers[0]
+          ? layers[1]
+          : layers[0];
 
-      /* Only selected LIGHT entries receive exposure */
-
-      const exposure =
-        target === "light" &&
-        step.state === "light" &&
-        (step.number === 6 || step.number === 4);
+      const effect = getEffect(step, from, to);
 
       incoming.style.transition = "none";
       incoming.style.opacity = "0";
       incoming.style.zIndex = "3";
 
-      incoming.style.filter = exposure
-        ? "brightness(1.08) blur(0.8px)"
+      incoming.style.filter = effect
+        ? effect.filter
         : "none";
 
       incoming.src = step.src;
@@ -409,22 +516,26 @@
         previous.style.zIndex = "2";
       }
 
-      /* Ensure browser applies the starting state */
+      /* Apply initial styles before animation */
 
       void incoming.offsetWidth;
 
-      incoming.style.transition = exposure
-        ? `opacity ${CROSSFADE_DURATION}ms linear,
-           filter ${EXPOSURE_DURATION}ms ease-out`
-        : `opacity ${CROSSFADE_DURATION}ms linear`;
+      const filterDuration = effect
+        ? effect.duration
+        : CROSSFADE_DURATION;
+
+      incoming.style.transition =
+        `opacity ${CROSSFADE_DURATION}ms linear,
+         filter ${filterDuration}ms ease-out`;
 
       incoming.style.opacity = "1";
       incoming.style.filter = "none";
 
       await wait(
-        exposure
-          ? EXPOSURE_DURATION
-          : CROSSFADE_DURATION
+        Math.max(
+          CROSSFADE_DURATION,
+          filterDuration
+        )
       );
 
       if (!isActive(id)) return false;
@@ -440,7 +551,7 @@
       return true;
     }
 
-    /* THREE SECOND TRANSITION */
+    /* RUN THREE SECOND TRANSITION */
 
     async function runTransition(from, to, id) {
       const sequence = buildSequence(from, to);
@@ -450,18 +561,36 @@
 
       const started = performance.now();
 
+      let backgroundChanged = false;
+
       for (let i = 0; i < sequence.length; i++) {
         if (!isActive(id)) return false;
 
-        const success = await fadeTo(
-          sequence[i],
+        const step = sequence[i];
+
+        /*
+          Background begins changing when
+          the next state first appears.
+        */
+
+        if (
+          !backgroundChanged &&
+          step.state === to
+        ) {
+          setBackground(to);
+          backgroundChanged = true;
+        }
+
+        const success = await crossfadeTo(
+          step,
+          from,
           to,
           id
         );
 
         if (!success) return false;
 
-        /* Keep the full transition near 3 seconds */
+        /* Maintain approximately 3 seconds */
 
         const nextTime =
           started + (i + 1) * stepDuration;
@@ -478,57 +607,64 @@
     }
 
     /*
-      MAIN LOOP
+      MAIN ANIMATION LOOP
 
       NORMAL 10s
       NORMAL TO LIGHT 3s
+
       LIGHT 10s
-      LIGHT TO NORMAL 3s
+      LIGHT TO DARK 3s
+
+      DARK 10s
+      DARK TO NORMAL 3s
+
       REPEAT
     */
 
     async function playAnimation(id) {
       if (!isActive(id)) return;
 
-      /* Preload while the first 10 seconds pass */
-
-      const results = await Promise.all([
+      const startup = await Promise.all([
         wait(STATIC_DURATION),
         preloadImages()
       ]);
 
-      if (!isActive(id) || !results[1]) return;
+      if (!isActive(id) || !startup[1]) {
+        return;
+      }
 
-      let currentState = "normal";
+      let currentIndex = 0;
 
       while (isActive(id)) {
-        const nextState =
-          currentState === "normal"
-            ? "light"
-            : "normal";
+        const nextIndex =
+          (currentIndex + 1) % stateOrder.length;
+
+        const from = stateOrder[currentIndex];
+        const to = stateOrder[nextIndex];
 
         const completed = await runTransition(
-          currentState,
-          nextState,
+          from,
+          to,
           id
         );
 
         if (!completed || !isActive(id)) break;
 
-        currentState = nextState;
+        currentIndex = nextIndex;
 
-        /* Hold the new master for 10 seconds */
+        /* Hold each state for 10 seconds */
 
         await wait(STATIC_DURATION);
       }
     }
 
-    /* RESTART WHEN SCREEN ORIENTATION CHANGES */
+    /* ORIENTATION AND MOTION CONTROL */
 
     function restartAnimation() {
       runId++;
 
       resetLayers();
+      setBackground("normal", true);
 
       if (
         portrait.matches &&
@@ -553,6 +689,8 @@
       "visibilitychange",
       restartAnimation
     );
+
+    /* START */
 
     restartAnimation();
   </script>
