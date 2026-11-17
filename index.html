@@ -162,12 +162,15 @@
   </main>
 
   <script>
-    /* SKALD STUDIO
-       MOBILE CHARACTER GLITCH V1
-       13s NORMAL
-       2s CHARACTER GLITCH
-       5s NORMAL
-       REPEAT
+    /*
+      SKALD STUDIO
+      CHARACTER GLITCH V2
+
+      00–10s    NORMAL
+      10–12.5s  CHARACTER GLITCH
+      12.5–20s  NORMAL
+      20–22s    RESERVED / PAGE FLICKER
+      22s       REPEAT
     */
 
     const portrait = window.matchMedia(
@@ -180,18 +183,20 @@
 
     const overlay = document.getElementById("glitch-frame");
 
-    /* EIGHT CHARACTER FRAMES */
+    /* NINE FRAMES / CACHE VERSION 2 */
 
-    const frames = Array.from({ length: 8 }, (_, i) =>
-      `skaldstudio-mobile-character-${String(i + 1).padStart(2, "0")}.webp`
+    const frames = Array.from({ length: 9 }, (_, i) =>
+      `skaldstudio-mobile-character-${String(i + 1).padStart(2, "0")}.webp?v=2`
     );
 
-    /* FORWARD AND REVERSE */
+    /* 01 TO 09 AND BACK TO 01 */
 
     const sequence = [
       ...frames,
       ...frames.slice(0, -1).reverse()
     ];
+
+    const FRAME_DURATION = 2500 / sequence.length;
 
     const wait = ms =>
       new Promise(resolve => setTimeout(resolve, ms));
@@ -199,7 +204,7 @@
     let framesPromise = null;
     let runId = 0;
 
-    /* PRELOAD IMAGES */
+    /* PRELOAD FRAMES */
 
     function preloadFrames() {
       if (!framesPromise) {
@@ -218,75 +223,67 @@
       return framesPromise;
     }
 
-    /* MAIN ANIMATION */
+    function isActive(id) {
+      return (
+        id === runId &&
+        portrait.matches &&
+        !reducedMotion.matches
+      );
+    }
+
+    /* CHARACTER ANIMATION */
 
     async function playGlitch() {
       const id = ++runId;
 
       overlay.style.opacity = "0";
 
-      if (!portrait.matches || reducedMotion.matches) {
-        return;
-      }
+      if (!isActive(id)) return;
 
       const loaded = await preloadFrames();
 
-      if (id !== runId || !loaded.every(Boolean)) {
-        return;
-      }
+      if (!isActive(id) || !loaded.every(Boolean)) return;
 
-      while (
-        id === runId &&
-        portrait.matches &&
-        !reducedMotion.matches
-      ) {
+      while (isActive(id)) {
 
-        /* 01 / NORMAL STATE: 13 SECONDS */
+        /* NORMAL / 10 SECONDS */
 
-        await wait(13000);
+        await wait(10000);
 
-        if (
-          id !== runId ||
-          !portrait.matches ||
-          reducedMotion.matches
-        ) break;
+        if (!isActive(id)) break;
 
-        /* 02 / CHARACTER GLITCH: 2 SECONDS */
+        /* CHARACTER GLITCH / 2.5 SECONDS */
 
         for (const src of sequence) {
+          if (!isActive(id)) break;
+
           overlay.src = src;
           overlay.style.opacity = "1";
 
-          await wait(125);
-
-          if (
-            id !== runId ||
-            !portrait.matches ||
-            reducedMotion.matches
-          ) break;
+          await wait(FRAME_DURATION);
         }
 
         /* RETURN TO NORMAL */
 
         overlay.style.opacity = "0";
 
-        if (
-          id !== runId ||
-          !portrait.matches ||
-          reducedMotion.matches
-        ) break;
+        if (!isActive(id)) break;
 
-        await wait(125);
+        /* NORMAL / 7.5 SECONDS */
 
-        /* 03 / NORMAL STATE: 5 SECONDS */
+        await wait(7500);
 
-        await wait(5000);
+        if (!isActive(id)) break;
+
+        /* RESERVED FOR PAGE FLICKER / 2 SECONDS */
+
+        await wait(2000);
       }
 
       overlay.style.opacity = "0";
     }
 
-    /* RESTART WHEN VIEW CHANGES */
+    /* RESTART ON ORIENTATION OR MOTION CHANGE */
 
     portrait.addEventListener("change", playGlitch);
     reducedMotion.addEventListener("change", playGlitch);
