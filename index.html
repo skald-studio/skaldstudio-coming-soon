@@ -53,6 +53,20 @@
       height: auto;
     }
 
+    /* CHARACTER GLITCH OVERLAY */
+
+    .glitch-frame {
+      display: none;
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+
     /* DESKTOP CONTACT AREA */
 
     .contact {
@@ -91,6 +105,10 @@
         width: 55%;
         height: 7%;
       }
+
+      .glitch-frame {
+        display: block;
+      }
     }
   </style>
 </head>
@@ -108,6 +126,8 @@
       A new site is taking shape.
     </p>
 
+    <!-- RESPONSIVE NORMAL STATE -->
+
     <picture>
       <source
         media="(max-width: 700px) and (orientation: portrait)"
@@ -122,6 +142,17 @@
       >
     </picture>
 
+    <!-- MOBILE CHARACTER GLITCH -->
+
+    <img
+      id="glitch-frame"
+      class="glitch-frame"
+      alt=""
+      aria-hidden="true"
+    >
+
+    <!-- CONTACT LINK -->
+
     <a
       class="contact"
       href="mailto:contact@skaldstudio.com"
@@ -129,5 +160,139 @@
     ></a>
 
   </main>
+
+  <script>
+    /* SKALD STUDIO
+       MOBILE CHARACTER GLITCH V1
+       13s NORMAL
+       2s CHARACTER GLITCH
+       5s NORMAL
+       REPEAT
+    */
+
+    const portrait = window.matchMedia(
+      "(max-width: 700px) and (orientation: portrait)"
+    );
+
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    );
+
+    const overlay = document.getElementById("glitch-frame");
+
+    /* EIGHT CHARACTER FRAMES */
+
+    const frames = Array.from({ length: 8 }, (_, i) =>
+      `skaldstudio-mobile-character-${String(i + 1).padStart(2, "0")}.webp`
+    );
+
+    /* FORWARD AND REVERSE */
+
+    const sequence = [
+      ...frames,
+      ...frames.slice(0, -1).reverse()
+    ];
+
+    const wait = ms =>
+      new Promise(resolve => setTimeout(resolve, ms));
+
+    let framesPromise = null;
+    let runId = 0;
+
+    /* PRELOAD IMAGES */
+
+    function preloadFrames() {
+      if (!framesPromise) {
+        framesPromise = Promise.all(
+          frames.map(src => new Promise(resolve => {
+            const img = new Image();
+
+            img.onload = () => resolve(true);
+            img.onerror = () => resolve(false);
+
+            img.src = src;
+          }))
+        );
+      }
+
+      return framesPromise;
+    }
+
+    /* MAIN ANIMATION */
+
+    async function playGlitch() {
+      const id = ++runId;
+
+      overlay.style.opacity = "0";
+
+      if (!portrait.matches || reducedMotion.matches) {
+        return;
+      }
+
+      const loaded = await preloadFrames();
+
+      if (id !== runId || !loaded.every(Boolean)) {
+        return;
+      }
+
+      while (
+        id === runId &&
+        portrait.matches &&
+        !reducedMotion.matches
+      ) {
+
+        /* 01 / NORMAL STATE: 13 SECONDS */
+
+        await wait(13000);
+
+        if (
+          id !== runId ||
+          !portrait.matches ||
+          reducedMotion.matches
+        ) break;
+
+        /* 02 / CHARACTER GLITCH: 2 SECONDS */
+
+        for (const src of sequence) {
+          overlay.src = src;
+          overlay.style.opacity = "1";
+
+          await wait(125);
+
+          if (
+            id !== runId ||
+            !portrait.matches ||
+            reducedMotion.matches
+          ) break;
+        }
+
+        /* RETURN TO NORMAL */
+
+        overlay.style.opacity = "0";
+
+        if (
+          id !== runId ||
+          !portrait.matches ||
+          reducedMotion.matches
+        ) break;
+
+        await wait(125);
+
+        /* 03 / NORMAL STATE: 5 SECONDS */
+
+        await wait(5000);
+      }
+
+      overlay.style.opacity = "0";
+    }
+
+    /* RESTART WHEN VIEW CHANGES */
+
+    portrait.addEventListener("change", playGlitch);
+    reducedMotion.addEventListener("change", playGlitch);
+
+    playGlitch();
+  </script>
+
 </body>
 </html>
