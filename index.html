@@ -27,7 +27,7 @@
       margin: 0;
       padding: 0;
       overflow-x: hidden;
-      background: var(--site-bg);
+      background-color: var(--site-bg);
     }
 
     body {
@@ -43,6 +43,8 @@
       padding: 0;
     }
 
+    /* PERMANENT BASE IMAGES */
+
     .base-image {
       display: block;
       width: 100%;
@@ -53,32 +55,20 @@
       display: none;
     }
 
-    /*
-      TEMPORARY TRANSITION LAYER
-
-      Only used while changing images.
-      The permanent base image is updated
-      before this layer is removed.
-    */
+    /* TEMPORARY TRANSITION LAYER */
 
     .transition-image {
       position: absolute;
       inset: 0;
-      display: block;
       width: 100%;
       height: 100%;
       object-fit: fill;
       opacity: 0;
-      z-index: 2;
       pointer-events: none;
+      z-index: 2;
     }
 
-    /*
-      CONTACT LINK
-
-      REFINED CLICK AREA FOR DESKTOP
-      ONLY THE EMAIL TEXT IS CLICKABLE
-    */
+    /* DESKTOP CONTACT HOTSPOT */
 
     .contact {
       position: absolute;
@@ -113,15 +103,12 @@
     /*
       MOBILE PORTRAIT
 
-      ORIGINAL V5 LAYOUT
-      REFINED EMAIL CLICK AREA
+      New V10 layout.
+      Email hotspot positioned over
+      CONTACT@SKALDSTUDIO.COM.
     */
 
     @media (max-width: 700px) and (orientation: portrait) {
-      :root {
-        --site-bg: #88797a;
-      }
-
       .base-desktop {
         display: none;
       }
@@ -131,10 +118,10 @@
       }
 
       .contact {
-        left: 5.7%;
-        top: 84%;
-        width: 31%;
-        height: 2.6%;
+        left: 10.9%;
+        top: 91.1%;
+        width: 35%;
+        height: 2.5%;
       }
     }
 
@@ -159,7 +146,7 @@
       A new site is taking shape.
     </p>
 
-    <!-- DESKTOP STARTS ON LIGHT BG -->
+    <!-- DESKTOP V10 -->
 
     <img
       id="desktop-base"
@@ -169,16 +156,16 @@
       fetchpriority="high"
     >
 
-    <!-- MOBILE RETAINS ORIGINAL START -->
+    <!-- MOBILE V10 -->
 
     <img
       id="mobile-base"
       class="base-image base-mobile"
-      src="skaldstudio-mobile-normal.webp"
+      src="skaldstudio-mobile-light-bg.webp"
       alt=""
     >
 
-    <!-- ONLY ONE TEMPORARY IMAGE LAYER -->
+    <!-- SHARED TRANSITION LAYER -->
 
     <img
       id="transition-image"
@@ -187,7 +174,7 @@
       aria-hidden="true"
     >
 
-    <!-- PERMANENT CONTACT LINK -->
+    <!-- CONTACT LINK -->
 
     <a
       class="contact"
@@ -201,25 +188,22 @@
   <script>
     /*
       SKALD STUDIO
-      DESKTOP ANIMATION V10
 
-      USER APPROVED STORYBOARD
+      DESKTOP V10 + MOBILE V10
 
-      00:00 - 00:10  LIGHT SEQUENCE
-      00:10 - 00:14  LIGHT HOLD
-      00:14 - 00:20  LIGHT / DARK
-      00:20 - 00:24  DARK HOLD
-      00:24 - 00:28  BACK TO LIGHT
+      IDENTICAL STORYBOARD
+      IDENTICAL TIMING
+      IDENTICAL TRANSITIONS
+
+      00:00 - 00:10 LIGHT
+      00:10 - 00:14 LIGHT HOLD
+      00:14 - 00:20 LIGHT TO DARK
+      00:20 - 00:24 DARK HOLD
+      00:24 - 00:28 BACK TO LIGHT
 
       TOTAL: 28 SECONDS
 
-      NO GLITCH FILTERS
-      NO BLEND MODES
-      NO DOUBLE IMAGE RESIDUE
-      NO SEPARATE DARK BG FRAME
-
-      MOBILE PORTRAIT:
-      V5 THREE STATE LOOP, 39 SECONDS
+      MOBILE V5 REMOVED
     */
 
     const portrait = window.matchMedia(
@@ -244,17 +228,15 @@
     );
 
     const COLORS = {
-      normal: "#88797a",
       light: "#c7c8c5",
       dark: "#292b2b"
     };
 
-    const DESKTOP_DURATION = 28000;
-    const MOBILE_DURATION = 39000;
+    const LOOP_DURATION = 28000;
 
     let runId = 0;
     let currentAnimation = null;
-    let desktopTone = "light";
+    let currentTone = "light";
 
     const imageCache = new Map();
 
@@ -262,6 +244,8 @@
       new Promise(resolve =>
         setTimeout(resolve, Math.max(0, ms))
       );
+
+    /* RESPONSIVE MODE */
 
     function currentMode() {
       return portrait.matches
@@ -293,34 +277,53 @@
       );
 
       if (themeColor) {
-        themeColor.setAttribute(
-          "content",
-          color
-        );
+        themeColor.setAttribute("content", color);
       }
     }
 
-    /*
-      IMAGE PRELOADING
+    /* IMAGE FILENAMES */
 
-      Each required image is loaded once.
-      Frames are decoded before playback.
+    function imagePath(mode, state, product, number) {
+      if (product === "bg") {
+        return (
+          "skaldstudio-" +
+          mode + "-" +
+          state +
+          "-bg.webp"
+        );
+      }
+
+      return (
+        "skaldstudio-" +
+        mode + "-" +
+        state + "-" +
+        product + "-" +
+        String(number).padStart(2, "0") +
+        ".webp"
+      );
+    }
+
+    /*
+      IMAGE LOADING
+
+      Retain each loaded image in memory
+      so it remains ready during playback.
     */
 
     function ensureImage(src) {
       if (imageCache.has(src)) {
-        return imageCache.get(src);
+        return imageCache.get(src).ready;
       }
 
       const image = new Image();
 
-      const promise = new Promise(resolve => {
+      const ready = new Promise(resolve => {
         image.onload = async () => {
           if (typeof image.decode === "function") {
             try {
               await image.decode();
             } catch (error) {
-              // The loaded image remains usable.
+              // Image is still available.
             }
           }
 
@@ -335,9 +338,9 @@
         image.src = src;
       });
 
-      imageCache.set(src, promise);
+      imageCache.set(src, { image, ready });
 
-      return promise;
+      return ready;
     }
 
     async function preloadImages(steps) {
@@ -352,12 +355,7 @@
       return results.every(Boolean);
     }
 
-    /*
-      CLEAR TRANSITION
-
-      Removes the temporary image.
-      Does not alter the permanent base.
-    */
+    /* CLEAR TEMPORARY TRANSITION */
 
     function clearOverlay() {
       if (currentAnimation) {
@@ -377,21 +375,19 @@
       FRAME ENGINE
 
       CUT:
-        Immediate image replacement.
+      Immediate image replacement.
 
       GHOST:
-        Controlled temporary overlap.
-        Best for gradual DJUP changes.
+      Progressive temporary overlap.
 
       FADE:
-        Short, simple transition.
-        Best for selected STRAUM images.
+      Short opacity transition.
 
       HOLD:
-        Full opacity, absolutely static.
+      Full opacity, static image.
 
-      Every finished frame replaces the
-      base image at 100% opacity.
+      The base image is always opaque.
+      Only one temporary layer is used.
     */
 
     async function displayFrame(step, id, mode) {
@@ -410,17 +406,20 @@
       let effect = step.effect || "cut";
 
       /*
-        Desktop never crossfades complete
-        LIGHT and DARK backgrounds.
+        A change between LIGHT and DARK
+        always uses a clean cut.
+
+        Same behavior on desktop and mobile.
       */
 
       if (
-        mode === "desktop" &&
         step.state &&
-        step.state !== desktopTone
+        step.state !== currentTone
       ) {
         effect = "cut";
       }
+
+      /* CUT / HOLD */
 
       if (effect === "cut" || effect === "hold") {
         clearOverlay();
@@ -429,25 +428,13 @@
 
         if (step.state) {
           setBackground(step.state);
-        }
-
-        if (mode === "desktop" && step.state) {
-          desktopTone = step.state;
-        }
-
-        if (step.background) {
-          setBackground(step.background);
+          currentTone = step.state;
         }
 
         return true;
       }
 
-      /*
-        GHOST / FADE
-
-        The incoming image appears above
-        the existing opaque base image.
-      */
+      /* GHOST / FADE */
 
       clearOverlay();
 
@@ -475,12 +462,6 @@
         ];
       }
 
-      const filterStart =
-        step.filterStart || "none";
-
-      keyframes[0].filter = filterStart;
-      keyframes[keyframes.length - 1].filter = "none";
-
       const animation = overlay.animate(
         keyframes,
         {
@@ -506,9 +487,8 @@
       }
 
       /*
-        Commit the new image to the base.
-        Keep overlay visible through
-        the next browser paint.
+        Replace the permanent base before
+        removing the transition overlay.
       */
 
       base.src = step.src;
@@ -523,31 +503,22 @@
 
       clearOverlay();
 
-      if (step.background) {
-        setBackground(step.background);
-      }
-
-      if (mode === "desktop" && step.state) {
-        desktopTone = step.state;
+      if (step.state) {
+        setBackground(step.state);
+        currentTone = step.state;
       }
 
       return true;
     }
 
     /*
-      ACCURATE TIMELINE
+      ACCURATE 28 SECOND TIMELINE
 
-      All durations use absolute deadlines.
-      Small rendering delays do not accumulate
-      across the 28 second sequence.
+      Uses absolute deadlines to prevent
+      small delays from accumulating.
     */
 
-    async function playTimeline(
-      steps,
-      duration,
-      id,
-      mode
-    ) {
+    async function playTimeline(steps, id, mode) {
       while (isActive(id, mode)) {
         const startTime = performance.now();
         let elapsed = 0;
@@ -569,48 +540,27 @@
 
           elapsed += step.ms;
 
-          const deadline =
-            startTime + elapsed;
-
           await wait(
-            deadline - performance.now()
+            startTime + elapsed - performance.now()
           );
         }
 
-        const cycleEnd =
-          startTime + duration;
-
-        if (performance.now() < cycleEnd) {
-          await wait(
-            cycleEnd - performance.now()
-          );
-        }
-      }
-    }
-
-    /* ==========================================
-       DESKTOP FRAME NAMING
-       ========================================== */
-
-    function desktopFrame(state, product, number) {
-      if (product === "bg") {
-        return (
-          "skaldstudio-desktop-" +
-          state +
-          "-bg.webp"
+        await wait(
+          startTime + LOOP_DURATION - performance.now()
         );
       }
-
-      return (
-        "skaldstudio-desktop-" +
-        state + "-" +
-        product + "-" +
-        String(number).padStart(2, "0") +
-        ".webp"
-      );
     }
 
-    const desktopSteps = [];
+    /* ====================================
+       SHARED V10 STORYBOARD
+
+       This is the approved Desktop V10
+       image order and timing.
+
+       Both formats use this one timeline.
+       ==================================== */
+
+    const storyboard = [];
 
     function frame(
       state,
@@ -620,13 +570,10 @@
       effect = "cut",
       fade = 100
     ) {
-      desktopSteps.push({
-        src: desktopFrame(
-          state,
-          product,
-          number
-        ),
+      storyboard.push({
         state,
+        product,
+        number,
         ms,
         effect,
         fade
@@ -634,25 +581,15 @@
     }
 
     /*
-      ==========================================
       01 / LIGHT
-
       00:00 - 00:04
-      STATIC LIGHT BACKGROUND
-      ==========================================
     */
 
-    frame(
-      "light", "bg", 0,
-      4000, "hold"
-    );
+    frame("light", "bg", 0, 4000, "hold");
 
     /*
       00:04 - 00:06
-
-      FIVE FRAMES
-      400 MS EACH
-      MIX GHOST
+      DJUP LIGHT
     */
 
     for (const n of [1, 2, 4, 5, 6]) {
@@ -664,9 +601,7 @@
 
     /*
       00:06 - 00:07.50
-
-      FAST CUTS
-      VARIABLE 150 - 320 MS
+      STRAUM INTERRUPTIONS
     */
 
     [
@@ -678,28 +613,22 @@
       ["straum", 5, 240],
       ["djup",   4, 320]
     ].forEach(([product, n, ms]) => {
-      frame(
-        "light", product, n,
-        ms, "cut"
-      );
+      frame("light", product, n, ms, "cut");
     });
 
     /*
       00:07.50 - 00:10
-
-      SHORT FADES + CUTS
-
-      STRAUM 10 GETS 450 MS.
+      MIXED FADE / CUT
     */
 
     [
-      ["djup",   7, 360, "fade", 120],
-      ["straum", 7, 280, "cut",    0],
-      ["straum", 8, 250, "cut",    0],
-      ["djup",   8, 420, "fade", 140],
-      ["straum", 8, 250, "cut",    0],
-      ["straum",10, 450, "fade", 100],
-      ["djup",   9, 490, "fade", 160]
+      ["djup",    7, 360, "fade", 120],
+      ["straum",  7, 280, "cut",    0],
+      ["straum",  8, 250, "cut",    0],
+      ["djup",    8, 420, "fade", 140],
+      ["straum",  8, 250, "cut",    0],
+      ["straum", 10, 450, "fade", 100],
+      ["djup",    9, 490, "fade", 160]
     ].forEach(([product, n, ms, effect, fade]) => {
       frame(
         "light", product, n,
@@ -708,12 +637,8 @@
     });
 
     /*
-      ==========================================
       02 / LIGHT HOLD
-
       00:10 - 00:14
-      STATIC DJUP LIGHT 10
-      ==========================================
     */
 
     frame(
@@ -722,24 +647,18 @@
     );
 
     /*
-      ==========================================
       03 / LIGHT TO DARK
-
       00:14 - 00:16
-
-      GHOST WITHIN SAME COLOR.
-      CLEAN CUT ACROSS COLORS.
-      ==========================================
     */
 
     [
-      ["light", "djup",   8, 250, "ghost", 140],
-      ["light", "djup",   7, 230, "ghost", 130],
-      ["dark",  "djup",   1, 250, "cut",     0],
-      ["dark",  "djup",   3, 270, "ghost", 140],
-      ["dark",  "straum", 3, 250, "fade",  100],
-      ["light", "djup",   6, 400, "cut",     0],
-      ["dark",  "djup",   5, 350, "cut",     0]
+      ["light", "djup",    8, 250, "ghost", 140],
+      ["light", "djup",    7, 230, "ghost", 130],
+      ["dark",  "djup",    1, 250, "cut",     0],
+      ["dark",  "djup",    3, 270, "ghost", 140],
+      ["dark",  "straum",  3, 250, "fade",  100],
+      ["light", "djup",    6, 400, "cut",     0],
+      ["dark",  "djup",    5, 350, "cut",     0]
     ].forEach(([state, product, n, ms, effect, fade]) => {
       frame(
         state, product, n,
@@ -749,9 +668,6 @@
 
     /*
       00:16 - 00:17.50
-
-      FAST CUTS
-      VARIABLE 180 - 240 MS
     */
 
     [
@@ -763,43 +679,28 @@
       ["dark",  "djup",   7, 240],
       ["dark",  "djup",   8, 230]
     ].forEach(([state, product, n, ms]) => {
-      frame(
-        state, product, n,
-        ms, "cut"
-      );
+      frame(state, product, n, ms, "cut");
     });
 
     /*
       00:17.50 - 00:20
-
-      VARIABLE CUTS
-
-      LIGHT DJUP 08 HELD 400 MS.
-      DARK STRAUM 10 HELD 450 MS.
     */
 
     [
-      ["dark",  "straum", 7, 280],
-      ["dark",  "straum", 6, 260],
-      ["dark",  "djup",   8, 370],
-      ["light", "djup",   8, 400],
-      ["dark",  "straum", 9, 290],
-      ["dark",  "straum",10, 450],
-      ["dark",  "djup",   9, 450]
+      ["dark",  "straum",  7, 280],
+      ["dark",  "straum",  6, 260],
+      ["dark",  "djup",    8, 370],
+      ["light", "djup",    8, 400],
+      ["dark",  "straum",  9, 290],
+      ["dark",  "straum", 10, 450],
+      ["dark",  "djup",    9, 450]
     ].forEach(([state, product, n, ms]) => {
-      frame(
-        state, product, n,
-        ms, "cut"
-      );
+      frame(state, product, n, ms, "cut");
     });
 
     /*
-      ==========================================
       04 / DARK HOLD
-
       00:20 - 00:24
-      STATIC DJUP DARK 10
-      ==========================================
     */
 
     frame(
@@ -808,49 +709,35 @@
     );
 
     /*
-      ==========================================
-      05 / TRANSITION BACK TO LIGHT
-
+      05 / BACK TO LIGHT
       00:24 - 00:26
-
-      SEVEN FRAMES
-      VARIABLE CLEAN CUTS
-      ==========================================
     */
 
     [
-      ["dark",  "djup",   9, 260],
-      ["dark",  "djup",   7, 270],
-      ["dark",  "djup",   6, 300],
-      ["dark",  "straum", 5, 270],
-      ["light", "straum",10, 310],
-      ["light", "djup",   8, 300],
-      ["dark",  "djup",   5, 290]
+      ["dark",  "djup",    9, 260],
+      ["dark",  "djup",    7, 270],
+      ["dark",  "djup",    6, 300],
+      ["dark",  "straum",  5, 270],
+      ["light", "straum", 10, 310],
+      ["light", "djup",    8, 300],
+      ["dark",  "djup",    5, 290]
     ].forEach(([state, product, n, ms]) => {
-      frame(
-        state, product, n,
-        ms, "cut"
-      );
+      frame(state, product, n, ms, "cut");
     });
 
     /*
       00:26 - 00:28
-
-      CUTS FIRST.
-      GHOST AT THE END.
-
-      LAST FRAME: LIGHT BG
-      SAME IMAGE AS LOOP START.
+      RETURN TO LIGHT BG
     */
 
     [
-      ["light", "djup",   6, 220, "cut",     0],
-      ["dark",  "djup",   3, 230, "cut",     0],
-      ["light", "djup",   4, 270, "cut",     0],
-      ["light", "straum", 6, 200, "cut",     0],
-      ["light", "djup",   2, 320, "ghost", 170],
-      ["light", "djup",   1, 280, "ghost", 180],
-      ["light", "bg",     0, 480, "ghost", 320]
+      ["light", "djup",    6, 220, "cut",     0],
+      ["dark",  "djup",    3, 230, "cut",     0],
+      ["light", "djup",    4, 270, "cut",     0],
+      ["light", "straum",  6, 200, "cut",     0],
+      ["light", "djup",    2, 320, "ghost", 170],
+      ["light", "djup",    1, 280, "ghost", 180],
+      ["light", "bg",      0, 480, "ghost", 320]
     ].forEach(([state, product, n, ms, effect, fade]) => {
       frame(
         state, product, n,
@@ -858,190 +745,29 @@
       );
     });
 
-    /*
-      ==========================================
-      MOBILE V5
+    /* ====================================
+       GENERATE BOTH FORMATS
 
-      ORIGINAL THREE STATES
-      NORMAL / LIGHT / DARK
+       SAME STORYBOARD.
+       DIFFERENT IMAGE PREFIX.
+       ==================================== */
 
-      10 SECOND HOLDS
-      3 SECOND TRANSITIONS
-      39 SECOND TOTAL LOOP
-      ==========================================
-    */
-
-    const MOBILE_VERSION = "v5";
-
-    const mobileStates = {
-      normal: {
-        master: "skaldstudio-mobile-normal.webp",
-        prefix: "skaldstudio-mobile-character-"
-      },
-
-      light: {
-        master: "skaldstudio-mobile-light.webp",
-        prefix: "skaldstudio-mobile-light-character-"
-      },
-
-      dark: {
-        master: "skaldstudio-mobile-dark.webp",
-        prefix: "skaldstudio-mobile-dark-character-"
-      }
-    };
-
-    function mobileFrame(state, number) {
-      return (
-        mobileStates[state].prefix +
-        String(number).padStart(2, "0") +
-        ".webp?" +
-        MOBILE_VERSION
-      );
+    function buildSteps(mode) {
+      return storyboard.map(step => ({
+        ...step,
+        src: imagePath(
+          mode,
+          step.state,
+          step.product,
+          step.number
+        )
+      }));
     }
 
-    function mobileMaster(state) {
-      return (
-        mobileStates[state].master +
-        "?" +
-        MOBILE_VERSION
-      );
-    }
+    const desktopSteps = buildSteps("desktop");
+    const mobileSteps = buildSteps("mobile");
 
-    function mobileFilter(frame, from, to) {
-      if (
-        frame.state !== to ||
-        ![4, 6].includes(frame.number)
-      ) {
-        return null;
-      }
-
-      if (from === "normal" && to === "light") {
-        return "brightness(1.08) blur(0.8px)";
-      }
-
-      if (from === "light" && to === "dark") {
-        return "brightness(0.88) contrast(1.10) blur(0.5px)";
-      }
-
-      if (from === "dark" && to === "normal") {
-        return "brightness(0.96) blur(0.4px)";
-      }
-
-      return null;
-    }
-
-    function buildMobileTransition(from, to) {
-      const frames = [];
-
-      /*
-        FORWARD: 01 TO 09
-      */
-
-      for (let n = 1; n <= 9; n++) {
-        frames.push({
-          state: from,
-          number: n,
-          src: mobileFrame(from, n)
-        });
-      }
-
-      /*
-        REVERSE WITH NEXT COLOR FRAMES
-      */
-
-      const reverse = [
-        [from, 8],
-        [from, 7],
-        [to, 6],
-        [from, 5],
-        [to, 4],
-        [to, 3],
-        [to, 2],
-        [to, 1]
-      ];
-
-      for (const [state, number] of reverse) {
-        frames.push({
-          state,
-          number,
-          src: mobileFrame(state, number)
-        });
-      }
-
-      frames.push({
-        state: to,
-        number: 0,
-        src: mobileMaster(to)
-      });
-
-      const frameDuration =
-        3000 / frames.length;
-
-      let backgroundChanged = false;
-
-      return frames.map(frame => {
-        const step = {
-          src: frame.src,
-          ms: frameDuration,
-          effect: "fade",
-          fade: 70,
-          filterStart: mobileFilter(
-            frame, from, to
-          )
-        };
-
-        if (
-          !backgroundChanged &&
-          frame.state === to
-        ) {
-          step.background = to;
-          backgroundChanged = true;
-        }
-
-        return step;
-      });
-    }
-
-    const mobileSteps = [];
-
-    function mobileHold(state) {
-      mobileSteps.push({
-        src: mobileMaster(state),
-        ms: 10000,
-        effect: "hold",
-        background: state
-      });
-    }
-
-    mobileHold("normal");
-
-    mobileSteps.push(
-      ...buildMobileTransition(
-        "normal", "light"
-      )
-    );
-
-    mobileHold("light");
-
-    mobileSteps.push(
-      ...buildMobileTransition(
-        "light", "dark"
-      )
-    );
-
-    mobileHold("dark");
-
-    mobileSteps.push(
-      ...buildMobileTransition(
-        "dark", "normal"
-      )
-    );
-
-    /*
-      ==========================================
-      SAFETY CHECKS
-      ==========================================
-    */
+    /* TIMING VERIFICATION */
 
     function totalDuration(steps) {
       return Math.round(
@@ -1053,20 +779,18 @@
     }
 
     console.assert(
-      totalDuration(desktopSteps) === DESKTOP_DURATION,
-      "Desktop duration must equal 28000 ms"
+      totalDuration(desktopSteps) === LOOP_DURATION,
+      "Desktop must equal 28000 ms"
     );
 
     console.assert(
-      totalDuration(mobileSteps) === MOBILE_DURATION,
-      "Mobile duration must equal 39000 ms"
+      totalDuration(mobileSteps) === LOOP_DURATION,
+      "Mobile must equal 28000 ms"
     );
 
-    /*
-      ==========================================
-      RESPONSIVE START / RESTART
-      ==========================================
-    */
+    /* ====================================
+       PLAYBACK
+       ==================================== */
 
     async function startPlayback(id, mode) {
       const steps =
@@ -1074,24 +798,18 @@
           ? mobileSteps
           : desktopSteps;
 
-      const duration =
-        mode === "mobile"
-          ? MOBILE_DURATION
-          : DESKTOP_DURATION;
-
       const ready = await preloadImages(steps);
 
       if (!isActive(id, mode) || !ready) {
         return;
       }
 
-      playTimeline(
-        steps,
-        duration,
-        id,
-        mode
-      );
+      playTimeline(steps, id, mode);
     }
+
+    /* ====================================
+       RESPONSIVE CONTROL
+       ==================================== */
 
     function restartAnimation() {
       runId++;
@@ -1100,26 +818,25 @@
 
       const mode = currentMode();
 
-      desktopTone = "light";
+      currentTone = "light";
+      setBackground("light");
 
-      if (mode === "mobile") {
-        mobileBase.src =
-          "skaldstudio-mobile-normal.webp";
+      desktopBase.src =
+        "skaldstudio-desktop-light-bg.webp";
 
-        setBackground("normal");
-      } else {
-        desktopBase.src =
-          reducedMotion.matches
-            ? "skaldstudio-desktop-light-djup-10.webp"
-            : "skaldstudio-desktop-light-bg.webp";
-
-        setBackground("light");
-      }
+      mobileBase.src =
+        "skaldstudio-mobile-light-bg.webp";
 
       if (
         document.hidden ||
         reducedMotion.matches
       ) {
+        if (reducedMotion.matches) {
+          getBase(mode).src = imagePath(
+            mode, "light", "djup", 10
+          );
+        }
+
         return;
       }
 
@@ -1141,11 +858,10 @@
       restartAnimation
     );
 
-    /*
-      START V10
-    */
+    /* START */
 
     restartAnimation();
+
   </script>
 </body>
 </html>
