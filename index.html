@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,13 +10,14 @@
   <title>SKALD STUDIO | Independent Design Practice</title>
 
   <meta name="description"
-        content="SKALD STUDIO is an independent design practice specializing in brand identity, apparel and product design, development and production. A new site is taking shape.">
+        content="SKALD STUDIO. Independent design practice. Brand identity, apparel and product design, development and production. A new site is taking shape.">
 
-  <meta name="theme-color" content="#88797a">
+  <meta name="theme-color" content="#c7c8c5">
 
   <style>
     :root {
-      --site-bg: #88797a;
+      --site-bg: #c7c8c5;
+      --bg-fade: 450ms;
     }
 
     * {
@@ -28,19 +30,19 @@
       width: 100%;
       overflow-x: hidden;
       background-color: var(--site-bg);
-      transition: background-color 650ms ease-in-out;
+      transition: background-color var(--bg-fade) ease-in-out;
     }
 
     body {
       margin: 0;
       padding: 0;
+      width: 100%;
       min-height: 100vh;
       min-height: 100dvh;
-      width: 100%;
       overflow-x: hidden;
       overflow-y: auto;
       background-color: var(--site-bg);
-      transition: background-color 650ms ease-in-out;
+      transition: background-color var(--bg-fade) ease-in-out;
     }
 
     .page {
@@ -50,23 +52,22 @@
       padding: 0;
     }
 
-    picture {
+    picture,
+    picture img {
       display: block;
       width: 100%;
     }
 
     picture img {
-      display: block;
-      width: 100%;
       height: auto;
     }
 
-    /* DUAL ANIMATION LAYERS */
+    /* ANIMATION LAYERS */
 
     .glitch-frame {
-      display: none;
       position: absolute;
       inset: 0;
+      display: block;
       width: 100%;
       height: 100%;
       object-fit: cover;
@@ -75,7 +76,7 @@
       z-index: 1;
     }
 
-    /* DESKTOP CONTACT */
+    /* CONTACT LINK */
 
     .contact {
       position: absolute;
@@ -107,22 +108,24 @@
     /* MOBILE PORTRAIT */
 
     @media (max-width: 700px) and (orientation: portrait) {
+      :root {
+        --site-bg: #88797a;
+        --bg-fade: 650ms;
+      }
+
       .contact {
         left: 4%;
         top: 82%;
         width: 55%;
         height: 7%;
       }
-
-      .glitch-frame {
-        display: block;
-      }
     }
 
-    /* REDUCED MOTION */
+    /* ACCESSIBILITY */
 
     @media (prefers-reduced-motion: reduce) {
-      html, body {
+      html,
+      body {
         transition: none !important;
       }
 
@@ -147,7 +150,7 @@
       A new site is taking shape.
     </p>
 
-    <!-- RESPONSIVE BASE -->
+    <!-- RESPONSIVE MASTER IMAGES -->
 
     <picture>
       <source
@@ -157,13 +160,13 @@
       >
 
       <img
-        src="skaldstudio-desktop-normal.webp"
+        src="skaldstudio-desktop-light-djup-10.webp"
         alt=""
         fetchpriority="high"
       >
     </picture>
 
-    <!-- ANIMATION LAYERS -->
+    <!-- TWO ANIMATION LAYERS -->
 
     <img
       id="glitch-a"
@@ -179,7 +182,7 @@
       aria-hidden="true"
     >
 
-    <!-- CONTACT LINK -->
+    <!-- CLICKABLE CONTACT -->
 
     <a
       class="contact"
@@ -191,22 +194,24 @@
 
   <script>
     /*
-      SKALD STUDIO
-      MOBILE ANIMATION V5
+      SKALD STUDIO / ANIMATION V6
 
-      00–10s  NORMAL
-      10–13s  NORMAL TO LIGHT
+      DESKTOP:
+      LIGHT 10s
+      LIGHT TO DARK 5s
+      DARK 10s
+      DARK TO LIGHT 5s
+      REPEAT / 30s
 
-      13–23s  LIGHT
-      23–26s  LIGHT TO DARK
-
-      26–36s  DARK
-      36–39s  DARK TO NORMAL
-
-      REPEAT / ENDLESS LOOP
+      MOBILE PORTRAIT:
+      NORMAL 10s
+      NORMAL TO LIGHT 3s
+      LIGHT 10s
+      LIGHT TO DARK 3s
+      DARK 10s
+      DARK TO NORMAL 3s
+      REPEAT / 39s
     */
-
-    /* DISPLAY CONDITIONS */
 
     const portrait = window.matchMedia(
       "(max-width: 700px) and (orientation: portrait)"
@@ -225,134 +230,39 @@
       'meta[name="theme-color"]'
     );
 
-    /* MASTER SETTINGS */
+    const MOBILE_VERSION = "v5";
+    const DESKTOP_VERSION = "v6";
 
-    const STATIC_DURATION = 10000;
-    const TRANSITION_DURATION = 3000;
-    const CROSSFADE_DURATION = 70;
-    const BACKGROUND_DURATION = 650;
-
-    const IMAGE_VERSION = "v5";
-
-    /*
-      THREE STATES
-
-      NORMAL / BRAND IDENTITY
-      LIGHT  / APPAREL & PRODUCT DESIGN
-      DARK   / DEVELOPMENT & PRODUCTION
-    */
-
-    const states = {
-      normal: {
-        master: "skaldstudio-mobile-normal.webp",
-        prefix: "skaldstudio-mobile-character-",
-        background: "#88797a"
-      },
-
-      light: {
-        master: "skaldstudio-mobile-light.webp",
-        prefix: "skaldstudio-mobile-light-character-",
-        background: "#c7c8c5"
-      },
-
-      dark: {
-        master: "skaldstudio-mobile-dark.webp",
-        prefix: "skaldstudio-mobile-dark-character-",
-        background: "#292b2b"
-      }
+    const COLORS = {
+      normal: "#88797a",
+      light: "#c7c8c5",
+      dark: "#292b2b"
     };
 
-    const stateOrder = [
-      "normal",
-      "light",
-      "dark"
-    ];
+    const wait = ms =>
+      new Promise(resolve => setTimeout(resolve, ms));
 
-    /* FILE PATHS */
+    let runId = 0;
+    let activeLayer = null;
 
-    function framePath(state, number) {
-      const index = String(number).padStart(2, "0");
+    /* DISPLAY CONTROL */
 
+    function currentMode() {
+      return portrait.matches ? "mobile" : "desktop";
+    }
+
+    function isActive(id, mode) {
       return (
-        states[state].prefix +
-        index +
-        ".webp?" +
-        IMAGE_VERSION
+        id === runId &&
+        currentMode() === mode &&
+        !reducedMotion.matches &&
+        !document.hidden
       );
     }
 
-    function masterPath(state) {
-      return (
-        states[state].master +
-        "?" +
-        IMAGE_VERSION
-      );
-    }
+    /* BACKGROUND CONTROL */
 
-    /*
-      TRANSITION SEQUENCE
-
-      FORWARD:
-      01 TO 09 / CURRENT STATE
-
-      RETURN:
-      08 CURRENT
-      07 CURRENT
-      06 NEXT
-      05 CURRENT
-      04 NEXT
-      03 NEXT
-      02 NEXT
-      01 NEXT
-
-      FINISH:
-      NEXT MASTER
-    */
-
-    function buildSequence(from, to) {
-      const sequence = [];
-
-      for (let n = 1; n <= 9; n++) {
-        sequence.push({
-          state: from,
-          number: n,
-          src: framePath(from, n)
-        });
-      }
-
-      const returnFrames = [
-        [from, 8],
-        [from, 7],
-        [to, 6],
-        [from, 5],
-        [to, 4],
-        [to, 3],
-        [to, 2],
-        [to, 1]
-      ];
-
-      for (const [state, number] of returnFrames) {
-        sequence.push({
-          state,
-          number,
-          src: framePath(state, number)
-        });
-      }
-
-      sequence.push({
-        state: to,
-        number: 0,
-        src: masterPath(to)
-      });
-
-      return sequence;
-    }
-
-    /* BACKGROUND COLOR CONTROL */
-
-    function setBackground(state, instant = false) {
-      const color = states[state].background;
-
+    function setBackground(color, instant = false) {
       const root = document.documentElement;
 
       if (instant) {
@@ -373,62 +283,7 @@
       }
     }
 
-    /* PRELOAD ALL THREE STATES */
-
-    const imageCache = new Map();
-    let preloadPromise = null;
-
-    function preloadImages() {
-      if (preloadPromise) return preloadPromise;
-
-      const paths = [];
-
-      for (const state of stateOrder) {
-        paths.push(masterPath(state));
-
-        for (let n = 1; n <= 9; n++) {
-          paths.push(framePath(state, n));
-        }
-      }
-
-      preloadPromise = Promise.all(
-        paths.map(src => new Promise(resolve => {
-          const image = new Image();
-
-          imageCache.set(src, image);
-
-          image.onload = () => resolve(true);
-
-          image.onerror = () => {
-            console.error("Image loading failed:", src);
-            resolve(false);
-          };
-
-          image.src = src;
-        }))
-      ).then(results => results.every(Boolean));
-
-      return preloadPromise;
-    }
-
-    /* TIMING HELPERS */
-
-    const wait = ms =>
-      new Promise(resolve => setTimeout(resolve, ms));
-
-    let runId = 0;
-    let activeLayer = null;
-
-    function isActive(id) {
-      return (
-        id === runId &&
-        portrait.matches &&
-        !reducedMotion.matches &&
-        !document.hidden
-      );
-    }
-
-    /* RESET LAYERS */
+    /* RESET IMAGE LAYERS */
 
     function resetLayers() {
       layers.forEach(layer => {
@@ -441,28 +296,167 @@
       activeLayer = null;
     }
 
-    /*
-      INDIVIDUAL STATE EFFECTS
+    /* PRELOAD ONLY THE IMAGES REQUIRED */
 
-      NORMAL TO LIGHT:
-      EXPOSURE BLEED
+    const imageCache = new Map();
 
-      LIGHT TO DARK:
-      SOFT CONTRAST COLLAPSE
+    function preloadImages(paths) {
+      const unique = [...new Set(paths)];
 
-      DARK TO NORMAL:
-      SUBTLE EXPOSURE RECOVERY
+      return Promise.all(
+        unique.map(src => {
+          if (imageCache.has(src)) {
+            return imageCache.get(src).promise;
+          }
 
-      MOTION SMEAR:
-      RETAINED FROM PHOTOSHOP FRAMES
-    */
+          const image = new Image();
 
-    function getEffect(step, from, to) {
-      const enteringNext =
-        step.state === to &&
-        (step.number === 6 || step.number === 4);
+          const promise = new Promise(resolve => {
+            image.onload = () => resolve(true);
 
-      if (!enteringNext) return null;
+            image.onerror = () => {
+              console.error("Image failed:", src);
+              resolve(false);
+            };
+          });
+
+          imageCache.set(src, { image, promise });
+          image.src = src;
+
+          return promise;
+        })
+      ).then(results => results.every(Boolean));
+    }
+
+    /* DUAL LAYER CROSSFADE */
+
+    async function showFrame(step, id, mode) {
+      if (!isActive(id, mode)) return false;
+
+      const previous = activeLayer;
+
+      const incoming =
+        previous === layers[0]
+          ? layers[1]
+          : layers[0];
+
+      const fade = step.fade ?? 70;
+      const duration = step.duration;
+      const effect = step.effect || null;
+
+      if (step.background) {
+        setBackground(step.background);
+      }
+
+      incoming.style.transition = "none";
+      incoming.style.opacity = "0";
+      incoming.style.zIndex = "3";
+      incoming.style.filter = effect
+        ? effect.filter
+        : "none";
+
+      incoming.src = step.src;
+
+      if (previous) {
+        previous.style.zIndex = "2";
+      }
+
+      void incoming.offsetWidth;
+
+      const filterDuration = effect
+        ? effect.duration
+        : fade;
+
+      incoming.style.transition =
+        `opacity ${fade}ms linear,
+         filter ${filterDuration}ms ease-out`;
+
+      incoming.style.opacity = "1";
+      incoming.style.filter = "none";
+
+      await wait(duration);
+
+      if (!isActive(id, mode)) return false;
+
+      if (previous) {
+        previous.style.transition = "none";
+        previous.style.opacity = "0";
+        previous.style.zIndex = "1";
+      }
+
+      activeLayer = incoming;
+
+      return true;
+    }
+
+    async function playSequence(steps, id, mode) {
+      for (const step of steps) {
+        if (!isActive(id, mode)) return false;
+
+        const success = await showFrame(
+          step,
+          id,
+          mode
+        );
+
+        if (!success) return false;
+      }
+
+      return isActive(id, mode);
+    }
+
+    /* ========================================
+       MOBILE V5
+       EXISTING APPROVED ANIMATION
+       ======================================== */
+
+    const mobileStates = {
+      normal: {
+        master: "skaldstudio-mobile-normal.webp",
+        prefix: "skaldstudio-mobile-character-"
+      },
+
+      light: {
+        master: "skaldstudio-mobile-light.webp",
+        prefix: "skaldstudio-mobile-light-character-"
+      },
+
+      dark: {
+        master: "skaldstudio-mobile-dark.webp",
+        prefix: "skaldstudio-mobile-dark-character-"
+      }
+    };
+
+    const mobileOrder = [
+      "normal",
+      "light",
+      "dark"
+    ];
+
+    function mobileFrame(state, number) {
+      return (
+        mobileStates[state].prefix +
+        String(number).padStart(2, "0") +
+        ".webp?" +
+        MOBILE_VERSION
+      );
+    }
+
+    function mobileMaster(state) {
+      return (
+        mobileStates[state].master +
+        "?" +
+        MOBILE_VERSION
+      );
+    }
+
+    function mobileEffect(step, from, to) {
+      if (
+        step.state !== to ||
+        (step.number !== 6 && step.number !== 4)
+      ) {
+        return null;
+      }
 
       if (from === "normal" && to === "light") {
         return {
@@ -488,190 +482,304 @@
       return null;
     }
 
-    /* DUAL LAYER CROSSFADE */
+    function mobileSequence(from, to) {
+      const frames = [];
 
-    async function crossfadeTo(step, from, to, id) {
-      if (!isActive(id)) return false;
+      /* FORWARD 01 TO 09 */
 
-      const previous = activeLayer;
-
-      const incoming =
-        previous === layers[0]
-          ? layers[1]
-          : layers[0];
-
-      const effect = getEffect(step, from, to);
-
-      incoming.style.transition = "none";
-      incoming.style.opacity = "0";
-      incoming.style.zIndex = "3";
-
-      incoming.style.filter = effect
-        ? effect.filter
-        : "none";
-
-      incoming.src = step.src;
-
-      if (previous) {
-        previous.style.zIndex = "2";
+      for (let n = 1; n <= 9; n++) {
+        frames.push({
+          state: from,
+          number: n,
+          src: mobileFrame(from, n)
+        });
       }
 
-      /* Apply initial styles before animation */
+      /* REVERSE WITH INCOMING COLOR */
 
-      void incoming.offsetWidth;
+      const reverse = [
+        [from, 8],
+        [from, 7],
+        [to, 6],
+        [from, 5],
+        [to, 4],
+        [to, 3],
+        [to, 2],
+        [to, 1]
+      ];
 
-      const filterDuration = effect
-        ? effect.duration
-        : CROSSFADE_DURATION;
-
-      incoming.style.transition =
-        `opacity ${CROSSFADE_DURATION}ms linear,
-         filter ${filterDuration}ms ease-out`;
-
-      incoming.style.opacity = "1";
-      incoming.style.filter = "none";
-
-      await wait(
-        Math.max(
-          CROSSFADE_DURATION,
-          filterDuration
-        )
-      );
-
-      if (!isActive(id)) return false;
-
-      if (previous) {
-        previous.style.transition = "none";
-        previous.style.opacity = "0";
-        previous.style.zIndex = "1";
+      for (const [state, number] of reverse) {
+        frames.push({
+          state,
+          number,
+          src: mobileFrame(state, number)
+        });
       }
 
-      activeLayer = incoming;
+      frames.push({
+        state: to,
+        number: 0,
+        src: mobileMaster(to)
+      });
 
-      return true;
-    }
-
-    /* RUN THREE SECOND TRANSITION */
-
-    async function runTransition(from, to, id) {
-      const sequence = buildSequence(from, to);
-
-      const stepDuration =
-        TRANSITION_DURATION / sequence.length;
-
-      const started = performance.now();
-
+      const frameDuration = 3000 / frames.length;
       let backgroundChanged = false;
 
-      for (let i = 0; i < sequence.length; i++) {
-        if (!isActive(id)) return false;
-
-        const step = sequence[i];
-
-        /*
-          Background begins changing when
-          the next state first appears.
-        */
+      return frames.map(frame => {
+        const step = {
+          ...frame,
+          duration: frameDuration,
+          fade: 70,
+          effect: mobileEffect(frame, from, to)
+        };
 
         if (
           !backgroundChanged &&
-          step.state === to
+          frame.state === to
         ) {
-          setBackground(to);
+          step.background = COLORS[to];
           backgroundChanged = true;
         }
 
-        const success = await crossfadeTo(
-          step,
-          from,
-          to,
-          id
-        );
+        return step;
+      });
+    }
 
-        if (!success) return false;
+    function mobilePreloadPaths() {
+      const paths = [];
 
-        /* Maintain approximately 3 seconds */
+      for (const state of mobileOrder) {
+        paths.push(mobileMaster(state));
 
-        const nextTime =
-          started + (i + 1) * stepDuration;
-
-        const remaining =
-          nextTime - performance.now();
-
-        if (remaining > 0) {
-          await wait(remaining);
+        for (let n = 1; n <= 9; n++) {
+          paths.push(mobileFrame(state, n));
         }
       }
 
-      return isActive(id);
+      return paths;
     }
 
-    /*
-      MAIN ANIMATION LOOP
-
-      NORMAL 10s
-      NORMAL TO LIGHT 3s
-
-      LIGHT 10s
-      LIGHT TO DARK 3s
-
-      DARK 10s
-      DARK TO NORMAL 3s
-
-      REPEAT
-    */
-
-    async function playAnimation(id) {
-      if (!isActive(id)) return;
-
+    async function playMobile(id) {
       const startup = await Promise.all([
-        wait(STATIC_DURATION),
-        preloadImages()
+        wait(10000),
+        preloadImages(mobilePreloadPaths())
       ]);
 
-      if (!isActive(id) || !startup[1]) {
+      if (!isActive(id, "mobile") || !startup[1]) {
         return;
       }
 
-      let currentIndex = 0;
+      let index = 0;
 
-      while (isActive(id)) {
-        const nextIndex =
-          (currentIndex + 1) % stateOrder.length;
+      while (isActive(id, "mobile")) {
+        const next = (index + 1) % mobileOrder.length;
 
-        const from = stateOrder[currentIndex];
-        const to = stateOrder[nextIndex];
-
-        const completed = await runTransition(
-          from,
-          to,
-          id
+        const completed = await playSequence(
+          mobileSequence(
+            mobileOrder[index],
+            mobileOrder[next]
+          ),
+          id,
+          "mobile"
         );
 
-        if (!completed || !isActive(id)) break;
+        if (!completed) break;
 
-        currentIndex = nextIndex;
+        index = next;
 
-        /* Hold each state for 10 seconds */
-
-        await wait(STATIC_DURATION);
+        await wait(10000);
       }
     }
 
-    /* ORIENTATION AND MOTION CONTROL */
+    /* ========================================
+       DESKTOP V6
+       DJUP + STRAUM
+       ======================================== */
+
+    function desktopFile(state, product, number) {
+      return (
+        "skaldstudio-desktop-" +
+        state + "-" +
+        product + "-" +
+        String(number).padStart(2, "0") +
+        ".webp?" +
+        DESKTOP_VERSION
+      );
+    }
+
+    function desktopBackground(state) {
+      return (
+        "skaldstudio-desktop-" +
+        state +
+        "-bg.webp?" +
+        DESKTOP_VERSION
+      );
+    }
+
+    /*
+      DESKTOP SEQUENCE
+
+      DJUP 10 -> 01
+      STRAUM INSERT
+      BACKGROUND TRANSFORMATION
+      STRAUM INSERT
+      DJUP 01 -> 10
+
+      TOTAL 5000 MS
+    */
+
+    function desktopSequence(from, to) {
+      const steps = [];
+
+      /* 01 / DJUP DISSOLVE / 1600 MS */
+
+      for (let n = 10; n >= 1; n--) {
+        steps.push({
+          src: desktopFile(from, "djup", n),
+          duration: 160,
+          fade: 70
+        });
+      }
+
+      /* 02 / STRAUM BREACH / 330 MS */
+
+      const outgoingBoards =
+        from === "light"
+          ? [7, 9, 10]
+          : [8, 4, 1];
+
+      for (const n of outgoingBoards) {
+        steps.push({
+          src: desktopFile(from, "straum", n),
+          duration: 110,
+          fade: 30
+        });
+      }
+
+      /* 03 / EMPTY CURRENT BACKGROUND / 150 MS */
+
+      steps.push({
+        src: desktopBackground(from),
+        duration: 150,
+        fade: 110
+      });
+
+      /* 04 / BACKGROUND TRANSFORMATION / 450 MS */
+
+      steps.push({
+        src: desktopBackground(to),
+        duration: 450,
+        fade: 450,
+        background: COLORS[to]
+      });
+
+      /* 05 / STRAUM RETURN / 300 MS */
+
+      const incomingBoards =
+        to === "dark"
+          ? [1, 4, 8]
+          : [10, 9, 7];
+
+      for (const n of incomingBoards) {
+        steps.push({
+          src: desktopFile(to, "straum", n),
+          duration: 100,
+          fade: 35
+        });
+      }
+
+      /* 06 / DJUP MATERIALIZATION / 2170 MS */
+
+      for (let n = 1; n <= 10; n++) {
+        steps.push({
+          src: desktopFile(to, "djup", n),
+          duration: 217,
+          fade: 70
+        });
+      }
+
+      return steps;
+    }
+
+    function desktopPreloadPaths() {
+      const paths = [
+        desktopFile("light", "djup", 10)
+      ];
+
+      for (const [from, to] of [
+        ["light", "dark"],
+        ["dark", "light"]
+      ]) {
+        for (const step of desktopSequence(from, to)) {
+          paths.push(step.src);
+        }
+      }
+
+      return paths;
+    }
+
+    async function playDesktop(id) {
+      /*
+        FIRST 10 SECONDS:
+        LIGHT DJUP MASTER
+      */
+
+      const startup = await Promise.all([
+        wait(10000),
+        preloadImages(desktopPreloadPaths())
+      ]);
+
+      if (!isActive(id, "desktop") || !startup[1]) {
+        return;
+      }
+
+      let state = "light";
+
+      while (isActive(id, "desktop")) {
+        const next =
+          state === "light" ? "dark" : "light";
+
+        const completed = await playSequence(
+          desktopSequence(state, next),
+          id,
+          "desktop"
+        );
+
+        if (!completed) break;
+
+        state = next;
+
+        /* STATIC STATE / 10 SECONDS */
+
+        await wait(10000);
+      }
+    }
+
+    /* ========================================
+       ORIENTATION / VISIBILITY CONTROL
+       ======================================== */
 
     function restartAnimation() {
       runId++;
 
       resetLayers();
-      setBackground("normal", true);
 
-      if (
-        portrait.matches &&
-        !reducedMotion.matches &&
-        !document.hidden
-      ) {
-        playAnimation(runId);
+      const mode = currentMode();
+
+      if (mode === "mobile") {
+        setBackground(COLORS.normal, true);
+      } else {
+        setBackground(COLORS.light, true);
+      }
+
+      if (reducedMotion.matches || document.hidden) {
+        return;
+      }
+
+      if (mode === "mobile") {
+        playMobile(runId);
+      } else {
+        playDesktop(runId);
       }
     }
 
@@ -690,7 +798,7 @@
       restartAnimation
     );
 
-    /* START */
+    /* INITIAL START */
 
     restartAnimation();
   </script>
